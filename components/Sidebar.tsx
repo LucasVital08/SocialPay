@@ -8,13 +8,19 @@ import {
   Activity,
   Beaker,
   LogOut,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/send", label: "Enviar", icon: Send },
+  { href: "/app/deposit", label: "Depositar (Pix)", icon: ArrowDownCircle },
+  { href: "/app/withdraw", label: "Sacar (Pix)", icon: ArrowUpCircle },
   { href: "/app/feed", label: "Feed", icon: Activity },
+  { href: "/app/premium", label: "Premium (x402)", icon: Zap },
   { href: "/demo", label: "Demo", icon: Beaker },
 ];
 

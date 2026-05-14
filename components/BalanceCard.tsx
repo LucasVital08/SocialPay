@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Wallet, RefreshCw, Zap } from "lucide-react";
+import Link from "next/link";
+import { Wallet, RefreshCw, Zap, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WalletAddress } from "@/components/WalletAddress";
 import { formatAmount } from "@/lib/utils";
+
+interface AssetBalance {
+  assetCode: string;
+  assetIssuer: string | null;
+  balance: string;
+  isNative: boolean;
+}
 
 interface BalanceCardProps {
   publicKey: string;
@@ -13,7 +21,7 @@ interface BalanceCardProps {
 }
 
 export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
-  const [balance, setBalance] = useState<string | null>(null);
+  const [balances, setBalances] = useState<AssetBalance[] | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [loadingFund, setLoadingFund] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -25,7 +33,7 @@ export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
       const res = await fetch(`/api/wallet/balance?publicKey=${publicKey}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setBalance(data.balance);
+      setBalances(data.balances ?? []);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Erro ao buscar saldo" });
     } finally {
@@ -44,7 +52,7 @@ export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setMessage({ type: "success", text: "Carteira financiada com Friendbot! Atualize o saldo." });
+      setMessage({ type: "success", text: "Carteira financiada com Friendbot!" });
       await fetchBalance();
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Erro ao financiar" });
@@ -52,6 +60,9 @@ export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
       setLoadingFund(false);
     }
   };
+
+  const assetLabel = (b: AssetBalance) =>
+    b.isNative ? "XLM" : b.assetCode;
 
   return (
     <Card>
@@ -64,13 +75,19 @@ export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
       <CardContent className="space-y-4">
         <WalletAddress publicKey={publicKey} />
 
-        {balance !== null && (
-          <div className="rounded-xl bg-slate-800/60 border border-slate-700/50 p-4">
-            <p className="text-xs text-slate-500 mb-1">Saldo disponível</p>
-            <p className="text-3xl font-bold text-white">
-              {formatAmount(balance)}{" "}
-              <span className="text-lg text-slate-400">XLM</span>
-            </p>
+        {balances !== null && (
+          <div className="rounded-xl bg-slate-800/60 border border-slate-700/50 p-4 space-y-3">
+            {balances.length === 0 && (
+              <p className="text-sm text-slate-400">Nenhum ativo encontrado.</p>
+            )}
+            {balances.map((b) => (
+              <div key={b.isNative ? "XLM" : `${b.assetCode}:${b.assetIssuer}`} className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-300">{assetLabel(b)}</span>
+                <span className="text-lg font-bold text-white">
+                  {formatAmount(b.balance)}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -87,23 +104,25 @@ export function BalanceCard({ publicKey, handle }: BalanceCardProps) {
         )}
 
         <div className="flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={fetchBalance}
-            loading={loadingBalance}
-          >
+          <Button size="sm" variant="outline" onClick={fetchBalance} loading={loadingBalance}>
             <RefreshCw className="h-3.5 w-3.5" />
-            Atualizar saldo
+            Atualizar
           </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={fundWallet}
-            loading={loadingFund}
-          >
+          <Button size="sm" variant="secondary" onClick={fundWallet} loading={loadingFund}>
             <Zap className="h-3.5 w-3.5" />
-            Financiar via Friendbot
+            Friendbot
+          </Button>
+          <Button asChild size="sm" variant="default">
+            <Link href="/app/deposit">
+              <ArrowDownCircle className="h-3.5 w-3.5" />
+              Depositar
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/app/withdraw">
+              <ArrowUpCircle className="h-3.5 w-3.5" />
+              Sacar
+            </Link>
           </Button>
         </div>
         <p className="text-xs text-slate-600">

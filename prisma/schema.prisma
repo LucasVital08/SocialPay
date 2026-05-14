@@ -5,26 +5,27 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                    String        @id @default(cuid())
+  id                    String           @id @default(cuid())
   name                  String
-  email                 String        @unique
+  email                 String           @unique
   passwordHash          String?
-  handle                String        @unique
-  accountType           String        @default("person")
-  profileVisibility     String        @default("public")
+  handle                String           @unique
+  accountType           String           @default("person")
+  profileVisibility     String           @default("public")
   etherfuseCustomerId   String?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
   wallet                Wallet?
-  sentTransactions      Transaction[] @relation("SentTransactions")
-  receivedTransactions  Transaction[] @relation("ReceivedTransactions")
-  ownedOrganizations    Organization[] @relation("OrgOwner")
+  sentTransactions      Transaction[]    @relation("SentTransactions")
+  receivedTransactions  Transaction[]    @relation("ReceivedTransactions")
+  ownedOrganizations    Organization[]   @relation("OrgOwner")
   rampOrders            RampOrder[]
+  orgMemberships        OrgMember[]      @relation("OrgMemberships")
+  orgTransactions       OrgTransaction[] @relation("OrgTxInitiator")
 }
 
 model Wallet {
@@ -64,15 +65,74 @@ model Transaction {
   receiver          User      @relation("ReceivedTransactions", fields: [receiverUserId], references: [id])
 }
 
-model Organization {
-  id          String    @id @default(cuid())
-  name        String
-  handle      String    @unique
-  ownerUserId String
-  createdAt   DateTime  @default(now())
+// ─── Organizações ──────────────────────────────────────────────────────────────
 
-  owner       User      @relation("OrgOwner", fields: [ownerUserId], references: [id])
-  projects    Project[]
+model Organization {
+  id           String           @id @default(cuid())
+  name         String
+  handle       String           @unique
+  description  String?
+  ownerUserId  String
+  createdAt    DateTime         @default(now())
+
+  owner        User             @relation("OrgOwner", fields: [ownerUserId], references: [id])
+  projects     Project[]
+  wallet       OrgWallet?
+  members      OrgMember[]
+  transactions OrgTransaction[]
+}
+
+// Carteira Stellar própria da organização
+model OrgWallet {
+  id              String       @id @default(cuid())
+  orgId           String       @unique
+  publicKey       String       @unique
+  encryptedSecret String
+  network         String       @default("testnet")
+  funded          Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  org             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// Membros da organização com papéis e limites de gastos
+model OrgMember {
+  id             String       @id @default(cuid())
+  orgId          String
+  userId         String
+  // owner | admin | payer | viewer
+  role           String       @default("viewer")
+  // limite de gasto em XLM — null = sem limite
+  spendingLimit  String?
+  totalSpent     String       @default("0")
+  addedAt        DateTime     @default(now())
+  addedBy        String?
+
+  org            Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user           User         @relation("OrgMemberships", fields: [userId], references: [id])
+
+  @@unique([orgId, userId])
+}
+
+// Histórico de pagamentos feitos pela org
+model OrgTransaction {
+  id                  String       @id @default(cuid())
+  orgId               String
+  initiatedByUserId   String
+  toHandle            String?
+  toPublicKey         String
+  amount              String
+  assetCode           String       @default("XLM")
+  description         String?
+  status              String       @default("pending")
+  stellarHash         String?
+  explorerUrl         String?
+  errorMessage        String?
+  createdAt           DateTime     @default(now())
+  confirmedAt         DateTime?
+
+  org                 Organization @relation(fields: [orgId], references: [id])
+  initiatedBy         User         @relation("OrgTxInitiator", fields: [initiatedByUserId], references: [id])
 }
 
 model Project {
@@ -91,24 +151,19 @@ model Project {
 model RampOrder {
   id                  String    @id @default(cuid())
   userId              String
-  type                String    // "onramp" | "offramp"
+  type                String
   status              String    @default("pending")
-  // Etherfuse IDs
   etherfuseOrderId    String?   @unique
   etherfuseQuoteId    String?
-  // Valores
   fiatAmount          String
   fiatCurrency        String    @default("BRL")
   cryptoAmount        String?
-  cryptoAssetCode     String    // "TESOURO" | "USDC"
+  cryptoAssetCode     String
   cryptoAssetIssuer   String
-  // Stellar
   walletPublicKey     String
-  // On-ramp: instrução Pix
   pixKey              String?
   pixQrCode           String?
   pixExpiration       DateTime?
-  // Off-ramp: memo OBRIGATÓRIO (sem memo = ordem órfã)
   memo                String?
   destinationAddress  String?
   bankAccountId       String?

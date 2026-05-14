@@ -11,6 +11,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Zap,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/app/withdraw", label: "Sacar (Pix)", icon: ArrowUpCircle },
   { href: "/app/feed", label: "Feed", icon: Activity },
   { href: "/app/premium", label: "Premium (x402)", icon: Zap },
+  { href: "/app/orgs/new", label: "Organizações", icon: Building2 },
   { href: "/demo", label: "Demo", icon: Beaker },
 ];
 
